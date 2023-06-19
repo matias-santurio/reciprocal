@@ -10,4 +10,4 @@ pip install reciprocal
 ```
 
 ## Examples
-See [examples](/examples) for some usage examples.
+See [examples](https://github.com/matias-santurio/reciprocal/tree/main/examples) for some usage examples.
