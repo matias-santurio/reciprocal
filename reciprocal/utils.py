@@ -16,6 +16,10 @@ def clear_after_cursor() -> None:
     click.echo("\033[J", nl=False)
 
 
+def move_cursor_to_start_line() -> None:
+    click.echo("\r", nl=False)
+
+
 def clear_line_after_cursor() -> None:
     click.echo("\033[K", nl=False)
 
