@@ -1,5 +1,10 @@
+import math
+import threading
+import time
 from dataclasses import dataclass
 from dataclasses import field
+from datetime import timedelta
+from inspect import signature
 from typing import Any
 from typing import Callable
 from typing import Optional
@@ -11,12 +16,11 @@ from reciprocal import config
 from reciprocal import utils
 
 OptionType = Callable[[], Any]
-InputOptionType = str | OptionType
 
 
 @dataclass
 class Action:
-    """An action allows you to specify a descriptive name and a handler which will
+    """An action allows to specify a descriptive name and a handler which will
     be called with the specified args and kwargs (if present)
 
         :param name: a descriptive name for the action, which will be shown on menus
@@ -39,10 +43,67 @@ class Action:
 class LiteralAction(Action):
     """An action that returns a literal"""
 
-    def __init__(self, literal: str, display_name: str | None = None) -> None:
+    def __init__(self, literal: Any, display_name: str | None = None) -> None:
         if display_name:
             return super().__init__(name=display_name, handler=lambda: literal)
         return super().__init__(name=literal, handler=lambda: literal)
+
+
+class WaitingAction(Action):
+    """An action that waits for a signal indicating that the waiting is finished.
+
+    Internally creates a thread that will display a 'loading' annimation which
+    gets killed once done() is called.
+
+        :param name: a descriptive name for the action, which will be shown on menus
+        :param prefix: format for the animation displayed, for example: "loading {animation}"
+        :param timeout: datetime.timedelta or time in seconds after which the waiting will be stopped automatically
+    """
+    format: str
+    thread: threading.Thread | None
+    timeout: float
+    _lock: threading.Semaphore
+    _running: bool
+    _messages: list[str]
+
+    def __init__(self, name: str, format: str, timeout: float | timedelta = 0):
+        super().__init__(name, self.wait)
+        self.format = format
+        if isinstance(timeout, timedelta):
+            timeout = timeout.total_seconds()
+        self.timeout = timeout if timeout > 0 else math.inf
+        self._lock = threading.Semaphore(0)
+        self._running = False
+        self._messages = []
+
+    def wait(self) -> 'WaitingAction':
+        self._running = True
+        self.thread = threading.Thread(target=WaitingAction._wait, args=[self])
+        self.thread.start()
+        return self
+
+    def send(self, message: str) -> None:
+        self._messages.append(message)
+
+    def done(self) -> None:
+        self._running = False
+        self._lock.acquire(True)
+
+    def _wait(self) -> None:
+        animation_frames = ['', '.', '..', '...', '..', '.']
+        i = 0
+        start_time = time.time()
+        while True:
+            click.echo(self.format.format(animation=animation_frames[i % len(animation_frames)]), nl=False)
+            time.sleep(0.2)
+            i += 1
+            utils.move_cursor_to_start_line()
+            utils.clear_line_after_cursor()
+            while self._messages:
+                click.echo(self._messages.pop(0))
+            if not self._running or time.time() - start_time > self.timeout:
+                self._lock.release()
+                return
 
 
 class ExitCode:
@@ -53,7 +114,7 @@ EXIT_CODE = ExitCode()
 EXIT_ACTION = Action("Exit", lambda: EXIT_CODE)
 
 
-class Menu():
+class Menu:
     """Menu used to display a list of options for the user to choose.
 
         :param name: a name for the menu, will be used in the __str__ method. Useful to nest menus!
@@ -82,7 +143,7 @@ class Menu():
     def __init__(
         self,
         name: str,
-        options: list[InputOptionType],
+        options: list[Action | Any] | None = None,
         handler: Optional[Callable[[Any], Any]] = None,
         hide_cursor: bool = True,
         prompt: str = ">",
@@ -91,7 +152,10 @@ class Menu():
         hovered_fg: Optional[int | Tuple[int, int, int] | str] = None,
         hovered_bg: Optional[int | Tuple[int, int, int] | str] = None
     ) -> None:
-        self.options = self._build_options(options)
+        if options:
+            self.options = self._build_options(options)
+        else:
+            self.options = self._build_options([])
         self.name = name
         self.handler = handler
         self.hide_cursor = hide_cursor
@@ -101,13 +165,13 @@ class Menu():
         self.hovered_fg = hovered_fg or config.SELECTED_FG
         self.hovered_bg = hovered_bg or config.SELECTED_BG
 
-    def _build_options(self, input: list[InputOptionType]) -> list[OptionType]:
+    def _build_options(self, input: list[Any]) -> list[OptionType]:
         options: list[OptionType] = []
         for option in input:
-            if isinstance(option, str):
-                options.append(LiteralAction(option))
-            else:
+            if hasattr(option, '__call__') and not len(signature(option).parameters):
                 options.append(option)
+            else:
+                options.append(LiteralAction(option))
         options.append(EXIT_ACTION)
         return options
 
