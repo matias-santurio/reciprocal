@@ -18,8 +18,8 @@ menu = Menu("Root menu", options)
 
 waiting_action = menu.execute()
 
-time.sleep(4)
+time.sleep(3.5)
 waiting_action.send("Haha, just kidding! Just a few more seconds")
-time.sleep(3)
+time.sleep(2.5)
 waiting_action.send("Done!")
 waiting_action.done()
