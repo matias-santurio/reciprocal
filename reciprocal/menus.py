@@ -154,6 +154,7 @@ class Menu:
         hovered_bg: Optional[int | Tuple[int, int, int] | str] = None,
         no_exit: bool = False
     ) -> None:
+        self.exit = not no_exit
         if options:
             self.options = self._build_options(options)
         else:
@@ -166,7 +167,6 @@ class Menu:
         self.header = header
         self.hovered_fg = hovered_fg or config.HOVERED_FG
         self.hovered_bg = hovered_bg or config.HOVERED_BG
-        self.exit = not no_exit
 
     def _build_options(self, input: list[Any]) -> list[OptionType]:
         options: list[OptionType] = []
