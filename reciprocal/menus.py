@@ -46,7 +46,7 @@ class LiteralAction(Action):
     def __init__(self, literal: Any, display_name: str | None = None) -> None:
         if display_name:
             return super().__init__(name=display_name, handler=lambda: literal)
-        return super().__init__(name=literal, handler=lambda: literal)
+        return super().__init__(name=str(literal), handler=lambda: literal)
 
 
 class WaitingAction(Action):
@@ -137,6 +137,7 @@ class Menu:
     header: str
     hovered_fg: Optional[int | Tuple[int, int, int] | str]
     hovered_bg: Optional[int | Tuple[int, int, int] | str]
+    exit: bool
     _selected_option: int = -1
     _longest_option: int = 0
 
@@ -150,7 +151,8 @@ class Menu:
         prefix: str = "[{i}] ",
         header: str = "",
         hovered_fg: Optional[int | Tuple[int, int, int] | str] = None,
-        hovered_bg: Optional[int | Tuple[int, int, int] | str] = None
+        hovered_bg: Optional[int | Tuple[int, int, int] | str] = None,
+        no_exit: bool = False
     ) -> None:
         if options:
             self.options = self._build_options(options)
@@ -162,8 +164,9 @@ class Menu:
         self.prompt = prompt
         self.prefix = prefix
         self.header = header
-        self.hovered_fg = hovered_fg or config.SELECTED_FG
-        self.hovered_bg = hovered_bg or config.SELECTED_BG
+        self.hovered_fg = hovered_fg or config.HOVERED_FG
+        self.hovered_bg = hovered_bg or config.HOVERED_BG
+        self.exit = not no_exit
 
     def _build_options(self, input: list[Any]) -> list[OptionType]:
         options: list[OptionType] = []
@@ -172,7 +175,8 @@ class Menu:
                 options.append(option)
             else:
                 options.append(LiteralAction(option))
-        options.append(EXIT_ACTION)
+        if self.exit:
+            options.append(EXIT_ACTION)
         return options
 
     def _display(self) -> None:
@@ -212,6 +216,7 @@ class Menu:
                     self._display_options()
             elif pressed_key == '\r':  # ENTER
                 self._clear_console()
+                click.secho(self.options[self._selected_option], fg=self.hovered_fg, bg=self.hovered_bg)
                 return self.options[self._selected_option]
 
     def execute(self) -> Any:
