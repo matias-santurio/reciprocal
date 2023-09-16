@@ -231,7 +231,7 @@ class Menu:
             if self.hide_cursor:
                 utils.hide_cursor()
             callable = self._await_selection()
-            if self.handler:
+            if self.handler and callable != EXIT_ACTION:
                 return self.handler(callable())
             return callable()
         except: # noqa E722
