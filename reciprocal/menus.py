@@ -8,7 +8,6 @@ from inspect import signature
 from typing import Any
 from typing import Callable
 from typing import Optional
-from typing import Tuple
 
 import click
 
@@ -135,8 +134,8 @@ class Menu:
     prompt: str
     prefix: str
     header: str
-    hovered_fg: Optional[int | Tuple[int, int, int] | str]
-    hovered_bg: Optional[int | Tuple[int, int, int] | str]
+    hovered_fg: Optional[int | tuple[int, int, int] | str]
+    hovered_bg: Optional[int | tuple[int, int, int] | str]
     exit: bool
     _selected_option: int = -1
     _longest_option: int = 0
@@ -144,14 +143,14 @@ class Menu:
     def __init__(
         self,
         name: str,
-        options: list[Action | Any] | None = None,
+        options: list[Any] | None = None,
         handler: Optional[Callable[[Any], Any]] = None,
         hide_cursor: bool = True,
         prompt: str = ">",
         prefix: str = "[{i}] ",
         header: str = "",
-        hovered_fg: Optional[int | Tuple[int, int, int] | str] = None,
-        hovered_bg: Optional[int | Tuple[int, int, int] | str] = None,
+        hovered_fg: Optional[int | tuple[int, int, int] | str] = None,
+        hovered_bg: Optional[int | tuple[int, int, int] | str] = None,
         no_exit: bool = False
     ) -> None:
         self.exit = not no_exit
